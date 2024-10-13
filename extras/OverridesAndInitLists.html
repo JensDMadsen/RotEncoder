@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OverridesAndInitLists.md</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__left">
+    <div class="stackedit__toc">
+      
+<ul>
+<li><a href="#documentation-the-use-of-templates-and-overridden-functions-instead-of-initialization-lists">Documentation: The Use of Templates and Overridden Functions Instead of Initialization Lists</a>
+<ul>
+<li><a href="#background">Background</a></li>
+<li><a href="#benefits-of-using-templates-and-overridden-functions">Benefits of Using Templates and Overridden Functions:</a></li>
+<li><a href="#why-not-use-initialization-lists">Why Not Use Initialization Lists?</a></li>
+<li><a href="#comparison-between-the-two-methods">Comparison Between the Two Methods</a></li>
+<li><a href="#examples-from-the-code">Examples from the Code</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+  </div>
+  <div class="stackedit__right">
+    <div class="stackedit__html">
+      <h1 id="documentation-the-use-of-templates-and-overridden-functions-instead-of-initialization-lists">Documentation: The Use of Templates and Overridden Functions Instead of Initialization Lists</h1>
+<h2 id="background">Background</h2>
+<p>In this library, <strong>templates</strong> and <strong>overridden functions</strong> are used to specify pin configurations for the <strong>RotEncoder</strong> instead of using <strong>initialization lists</strong>. This design choice has been made to improve both <strong>flexibility</strong> and <strong>efficiency</strong>, and to ensure that pin configurations can be optimized at compile-time.</p>
+<h2 id="benefits-of-using-templates-and-overridden-functions">Benefits of Using Templates and Overridden Functions:</h2>
+<h3 id="compile-time-evaluation-and-optimization">1. Compile-Time Evaluation and Optimization</h3>
+<ul>
+<li>
+<p>When you use <strong>templates</strong> to specify pin numbers, as in <strong><code>RotEncoderPins&lt;PinA, PinB&gt;</code></strong>, the pin values are determined at compile-time. This means that the compiler can optimize the code and eliminate any potential runtime overhead that could arise from using runtime configurations, such as <strong>initialization lists</strong>.</p>
+<p><strong>Example</strong>:</p>
+<pre class=" language-cpp"><code class="prism  language-cpp">RotEncoderPins<span class="token operator">&lt;</span><span class="token number">5</span><span class="token punctuation">,</span> <span class="token number">6</span><span class="token operator">&gt;</span> encoder<span class="token punctuation">;</span> <span class="token comment">// PinA is 5, PinB is 6</span>
+</code></pre>
+<p>Here, the pin numbers (5 and 6) will be inserted directly into the code during compilation, reducing the need to store these values in RAM and improving execution speed.</p>
+</li>
+</ul>
+<h3 id="reduced-memory-usage">2. Reduced Memory Usage</h3>
+<ul>
+<li>
+<p><strong>Initialization lists</strong> typically store values in RAM as runtime variables, which leads to increased memory consumption. By using <strong>templates</strong> and <strong>overridden functions</strong>, the pin values are handled at compile-time, avoiding the need to store them in RAM. This is especially crucial in embedded systems like Arduino, where memory is limited.</p>
+<p><strong>Code Example</strong>:</p>
+<pre class=" language-cpp"><code class="prism  language-cpp"><span class="token keyword">template</span> <span class="token operator">&lt;</span>uint8_t PinA<span class="token punctuation">,</span> uint8_t PinB<span class="token operator">&gt;</span>
+<span class="token keyword">class</span> <span class="token class-name">RotEncoderPins</span> <span class="token operator">:</span> <span class="token keyword">public</span> RotEncoder <span class="token punctuation">{</span>
+<span class="token keyword">public</span><span class="token operator">:</span>
+  <span class="token keyword">inline</span> uint8_t <span class="token function">getPinA</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">const</span> override <span class="token function">__attribute__</span><span class="token punctuation">(</span><span class="token punctuation">(</span>always_inline<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span> <span class="token keyword">return</span> PinA<span class="token punctuation">;</span> <span class="token punctuation">}</span>
+  <span class="token keyword">inline</span> uint8_t <span class="token function">getPinB</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">const</span> override <span class="token function">__attribute__</span><span class="token punctuation">(</span><span class="token punctuation">(</span>always_inline<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span> <span class="token keyword">return</span> PinB<span class="token punctuation">;</span> <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre>
+<p>In this example, the <code>PinA</code> and <code>PinB</code> values are handled at compile-time and returned by the overridden <code>getPinA()</code> and <code>getPinB()</code> functions, meaning they do not consume additional memory during runtime.</p>
+</li>
+</ul>
+<h3 id="increased-flexibility">3. Increased Flexibility</h3>
+<ul>
+<li>
+<p>With templates, you can create multiple instances of the <strong>RotEncoder</strong> class, each with its own custom pin configurations, without altering the base code. This allows for great flexibility when working with various hardware setups.</p>
+<p><strong>Example</strong>:</p>
+<pre class=" language-cpp"><code class="prism  language-cpp">RotEncoderPins<span class="token operator">&lt;</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token operator">&gt;</span> encoder1<span class="token punctuation">;</span> <span class="token comment">// Uses pin 2 and 3</span>
+RotEncoderPins<span class="token operator">&lt;</span><span class="token number">5</span><span class="token punctuation">,</span> <span class="token number">6</span><span class="token operator">&gt;</span> encoder2<span class="token punctuation">;</span> <span class="token comment">// Uses pin 5 and 6</span>
+</code></pre>
+<p>Each encoder instance can have its own pin configuration, making it easy to work with different hardware devices in a single project.</p>
+</li>
+</ul>
+<h3 id="fewer-runtime-errors">4. Fewer Runtime Errors</h3>
+<ul>
+<li>By relying on <strong>templates</strong> and <strong>overridden functions</strong>, you can avoid common runtime errors caused by incorrect pin initialization. Since pin values are checked at compile-time, potential errors are caught early, making the code more reliable and easier to debug.</li>
+</ul>
+<h2 id="why-not-use-initialization-lists">Why Not Use Initialization Lists?</h2>
+<h3 id="runtime-overhead">1. Runtime Overhead</h3>
+<ul>
+<li>Initialization lists evaluate and assign values at runtime, which introduces overhead when the program starts. For performance-critical applications, such as embedded systems, this overhead can be avoided by using compile-time constants.</li>
+</ul>
+<h3 id="higher-ram-usage">2. Higher RAM Usage</h3>
+<ul>
+<li>Initialization lists store values like pin numbers in RAM, even if those values are constant throughout the execution. This can unnecessarily consume memory in resource-constrained systems like Arduino.</li>
+</ul>
+<h3 id="limits-compile-time-optimization">3. Limits Compile-Time Optimization</h3>
+<ul>
+<li>By using initialization lists, you limit the compiler’s ability to optimize the code because pin numbers are treated as runtime variables. With templates, these constants are evaluated at compile-time, allowing for greater optimization.</li>
+</ul>
+<h2 id="comparison-between-the-two-methods">Comparison Between the Two Methods</h2>
+
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Compile-Time Optimization</th>
+<th>Memory Usage</th>
+<th>Flexibility</th>
+<th>Risk of Runtime Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Templates</strong></td>
+<td>Yes</td>
+<td>Low</td>
+<td>High</td>
+<td>Low</td>
+</tr>
+<tr>
+<td><strong>Initialization Lists</strong></td>
+<td>No</td>
+<td>High</td>
+<td>Medium</td>
+<td>High</td>
+</tr>
+</tbody>
+</table><h2 id="examples-from-the-code">Examples from the Code</h2>
+<h3 id="example-1-using-rotencoder-with-default-pin-configurations">Example 1: Using <code>RotEncoder</code> with Default Pin Configurations</h3>
+<pre class=" language-cpp"><code class="prism  language-cpp">RotEncoder encoder<span class="token punctuation">;</span> <span class="token comment">// Uses default pins (PinA = 2, PinB = 3)</span>
+</code></pre>
+<p>In this example, the encoder uses the default pin values for PinA (2) and PinB (3). These values are hardcoded into the <code>RotEncoder</code> class.</p>
+<h3 id="example-2-using-rotencoderpins-with-custom-pin-configurations">Example 2: Using <code>RotEncoderPins</code> with Custom Pin Configurations</h3>
+<pre class=" language-cpp"><code class="prism  language-cpp">RotEncoderPins<span class="token operator">&lt;</span><span class="token number">5</span><span class="token punctuation">,</span> <span class="token number">6</span><span class="token operator">&gt;</span> customEncoder<span class="token punctuation">;</span> <span class="token comment">// Uses pin 5 and 6</span>
+</code></pre>
+<p>In this example, the pin numbers are passed via the template parameters and resolved at compile-time. This reduces the memory footprint and ensures efficient execution. The virtual functions <code>getPinA()</code> and <code>getPinB()</code> are overridden to return the values from the template.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>By using <strong>templates</strong> and <strong>overridden functions</strong> instead of <strong>initialization lists</strong>, the code is optimized for both speed and memory usage. This approach provides a more flexible structure where users can easily change pin configurations via the <strong><code>RotEncoderPins</code></strong> class, without managing runtime initialization or risking runtime errors.</p>
+
+    </div>
+  </div>
+</body>
+
+</html>

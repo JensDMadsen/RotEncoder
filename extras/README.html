@@ -1,0 +1,331 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RotaryEncoder.md</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__left">
+    <div class="stackedit__toc">
+      
+<ul>
+<li><a href="#why-choose-this-rotary-encoder-library">Why Choose this Rotary Encoder Library</a>
+<ul>
+<li><a href="#low-power-consumption">1. Low Power Consumption</a></li>
+<li><a href="#high-accuracy-and-responsiveness">2. High Accuracy and Responsiveness</a></li>
+<li><a href="#easy-customization">3. Easy Customization</a></li>
+<li><a href="#reliable-and-safe-operation">4. Reliable and Safe Operation</a></li>
+<li><a href="#modular-design-and-extensibility">5. Modular Design and Extensibility</a></li>
+<li><a href="#summary-of-key-features">Summary of Key Features:</a></li>
+</ul>
+</li>
+<li><a href="#how-to-use-the-rotencoder-library">How to Use the RotEncoder Library</a>
+<ul>
+<li><a href="#installing-the-library">1. Installing the Library</a></li>
+<li><a href="#including-the-library-in-your-sketch">2. Including the Library in Your Sketch</a></li>
+<li><a href="#default-pin-configuration-and-power-saving">3. Default Pin Configuration and Power Saving</a></li>
+<li><a href="#customizing-pin-configuration">4. Customizing Pin Configuration</a></li>
+<li><a href="#stopping-the-encoder">5. Stopping the Encoder</a></li>
+<li><a href="#interrupts-and-advanced-usage">6. Interrupts and Advanced Usage</a></li>
+</ul>
+</li>
+<li><a href="#reading-and-decoding-of-rotary-encoders">Reading and Decoding of Rotary Encoders</a>
+<ul>
+<li><a href="#understanding-the-basics">Understanding the Basics</a></li>
+<li><a href="#spring-actuation-force-and-rotary-encoder-behavior">Spring Actuation Force and Rotary Encoder Behavior</a></li>
+<li><a href="#considerations-for-low-power-designs">Considerations for Low-Power Designs</a></li>
+<li><a href="#important-observations-for-rotary-encoder-algorithms">Important Observations for Rotary Encoder Algorithms</a></li>
+<li><a href="#common-mistakes-when-using-rotary-encoders">Common Mistakes When Using Rotary Encoders</a></li>
+<li><a href="#best-practices-for-rotary-encoder-algorithms">Best Practices for Rotary Encoder Algorithms</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+<li><a href="#additional-documentation">Additional Documentation</a></li>
+<li><a href="#contact">Contact</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+  </div>
+  <div class="stackedit__right">
+    <div class="stackedit__html">
+      <h1 id="why-choose-this-rotary-encoder-library">Why Choose this Rotary Encoder Library</h1>
+<p>The <strong>RotEncoder</strong> library offers several key advantages over other rotary encoder libraries, making it a great choice for both hobbyists and professionals. Here are the main reasons to choose this library:</p>
+<h2 id="low-power-consumption">1. Low Power Consumption</h2>
+<p>The <strong>RotEncoder</strong> library is optimized for low power consumption, making it ideal for battery-powered applications. Rotary encoders often settle in a position where one of the contacts is closed, even when the knob is not being turned. Without proper management, this can lead to constant static current draw. The <strong>RotEncoder</strong> library avoids this by dynamically controlling the pull-up resistors, ensuring that no static current is drawn unless <strong>both the A and B contacts</strong> of the rotary encoder are closed simultaneously.</p>
+<ul>
+<li><strong>Dynamic power management</strong>: By dynamically enabling and disabling the pull-up resistors, the library ensures that only one pin is active at a time, unless both contacts are closed.</li>
+<li><strong>Efficient power usage</strong>: This approach minimizes power consumption by only drawing current during <strong>state transitions</strong> or when both contacts are closed, helping your device run longer on a single charge.</li>
+</ul>
+<h2 id="high-accuracy-and-responsiveness">2. High Accuracy and Responsiveness</h2>
+<p>With support for hardware interrupts, the library guarantees fast and precise position tracking, even when the rotary encoder is turned at high speeds. The interrupt-driven design ensures that every pulse is captured accurately, preventing missed counts or position errors.</p>
+<h2 id="easy-customization">3. Easy Customization</h2>
+<p>While the library works out of the box with default pins (2 and 3 on the Arduino Nano), it also offers flexibility for advanced users who want to use different pin configurations. The <strong>RotEncoderPins</strong> template class makes it easy to specify custom pins during compilation, ensuring seamless integration into a wide range of projects.</p>
+<h2 id="reliable-and-safe-operation">4. Reliable and Safe Operation</h2>
+<p>The library is designed with safety and robustness in mind. It actively disables unused pins to reduce static current draw and to ensure that no floating inputs cause unexpected behavior. Furthermore, it ensures that pins are always in a well-defined state, whether in pull-up mode or actively pulled low.</p>
+<h2 id="modular-design-and-extensibility">5. Modular Design and Extensibility</h2>
+<p>The library is structured to be modular, making it easy to extend and customize. You can override functions for pin reading or mode control, giving you full flexibility to adapt the library to your specific hardware requirements.</p>
+<h2 id="summary-of-key-features">Summary of Key Features:</h2>
+<ul>
+<li><strong>Low power consumption</strong> with dynamic control of pull-up resistors.</li>
+<li><strong>Interrupt-driven</strong> for fast and accurate position tracking.</li>
+<li><strong>Customizable</strong> pin configurations via template classes.</li>
+<li><strong>Safe operation</strong> by avoiding static current draw and ensuring pins are in defined states.</li>
+<li><strong>Modular and extensible</strong> design, allowing easy adaptation to different use cases.).</li>
+<li><strong>You get a rotary encoder that works</strong> without the typical <a href="#common-mistakes-when-using-rotary-encoders">pitfalls</a> seen in most implementations.</li>
+</ul>
+<hr>
+<h1 id="how-to-use-the-rotencoder-library">How to Use the RotEncoder Library</h1>
+<p>The <strong>RotEncoder</strong> library is designed to efficiently handle rotary encoders while minimizing power consumption. Below are detailed steps and instructions for using the library with the default pin configuration or customizing it for specific pin setups.</p>
+<h2 id="installing-the-library">1. Installing the Library</h2>
+<p>To begin using the <strong>RotEncoder</strong> library, download and install the library in your Arduino IDE. You can place the library in the <code>libraries</code> folder in your Arduino installation directory, or use the <strong>Library Manager</strong> in the IDE to import the library.</p>
+<h2 id="including-the-library-in-your-sketch">2. Including the Library in Your Sketch</h2>
+<p>After installation, include the library at the top of your Arduino sketch:</p>
+<pre class=" language-cpp"><code class="prism  language-cpp"><span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">&lt;RotEncoder.h&gt;</span></span>
+</code></pre>
+<h2 id="default-pin-configuration-and-power-saving">3. Default Pin Configuration and Power Saving</h2>
+<p>By default, the <strong>RotEncoder</strong> class uses digital pins 2 and 3 on the Arduino Nano (or similar boards) for rotary encoder inputs. These pins support interrupts, which are used by the library to track the encoder’s movement.</p>
+<h3 id="rotary-encoder-pin-connections-to-arduino-nano">Rotary Encoder Pin Connections to Arduino Nano:</h3>
+<pre><code>    Rotary Encoder       Arduino Nano
+    --------------       -------------
+       [ Pin A ]  ------- Pin 2 (Digital Input)
+       [ Pin B ]  ------- Pin 3 (Digital Input)
+       [ GND   ]  ------- GND
+</code></pre>
+<h3 id="important-notes">Important Notes:</h3>
+<ul>
+<li><strong>Pin A</strong> and <strong>Pin B</strong> are configured as <strong>input pins with pull-up resistors</strong> when the encoder is being read.</li>
+<li>The library <strong>dynamically manages the pull-up resistors</strong> to minimize power consumption. <strong>No static current is drawn</strong> except when both the A and B contacts of the rotary encoder are active simultaneously.</li>
+<li>Depending on the state of the encoder, one pin may be actively pulled low, while the other is in <strong>input_pullup</strong> mode. This dynamic control ensures the encoder can be read while minimizing unnecessary power consumption.</li>
+<li><strong>Do not connect encoders that actively drive the pins high</strong>, as this could conflict with the library’s power-saving features, leading to increased power consumption or improper operation.</li>
+<li>If your encoder drives the pins high, you can modify or override the relevant functions to handle these cases safely.</li>
+</ul>
+<h3 id="example-using-default-pins">Example Using Default Pins:</h3>
+<pre class=" language-cpp"><code class="prism  language-cpp"><span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">&lt;RotEncoder.h&gt;</span></span>
+
+RotEncoder encoder<span class="token punctuation">;</span>  <span class="token comment">// Uses default pins 2 (PinA) and 3 (PinB)</span>
+
+<span class="token keyword">void</span> <span class="token function">setup</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    Serial<span class="token punctuation">.</span><span class="token function">begin</span><span class="token punctuation">(</span><span class="token number">115200</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    encoder<span class="token punctuation">.</span><span class="token function">begin</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Start the encoder</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">void</span> <span class="token function">loop</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">long</span> position <span class="token operator">=</span> encoder<span class="token punctuation">.</span><span class="token function">getPosition</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Get the current encoder position</span>
+
+    <span class="token comment">// Print the position if it changes</span>
+    <span class="token keyword">static</span> <span class="token keyword">long</span> lastPosition <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>position <span class="token operator">!=</span> lastPosition<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        lastPosition <span class="token operator">=</span> position<span class="token punctuation">;</span>
+        Serial<span class="token punctuation">.</span><span class="token function">print</span><span class="token punctuation">(</span><span class="token string">"Position: "</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        Serial<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span>position<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<h2 id="customizing-pin-configuration">4. Customizing Pin Configuration</h2>
+<p>If you need to use pins other than the default pins 2 and 3, the library provides a template class, <code>RotEncoderPins</code>, which allows you to specify the pin numbers during compilation.</p>
+<h3 id="custom-pin-example">Custom Pin Example:</h3>
+<pre class=" language-cpp"><code class="prism  language-cpp"><span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">&lt;RotEncoder.h&gt;</span></span>
+
+<span class="token comment">// Use pins 5 and 6 instead of 2 and 3</span>
+RotEncoderPins<span class="token operator">&lt;</span><span class="token number">5</span><span class="token punctuation">,</span> <span class="token number">6</span><span class="token operator">&gt;</span> encoder<span class="token punctuation">;</span>
+
+<span class="token keyword">void</span> <span class="token function">setup</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    Serial<span class="token punctuation">.</span><span class="token function">begin</span><span class="token punctuation">(</span><span class="token number">115200</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    encoder<span class="token punctuation">.</span><span class="token function">begin</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Start the encoder</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">void</span> <span class="token function">loop</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">long</span> position <span class="token operator">=</span> encoder<span class="token punctuation">.</span><span class="token function">getPosition</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Get the current encoder position</span>
+    Serial<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span>position<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<p>In this example, the rotary encoder is connected to pins 5 and 6, but the rest of the code remains the same.</p>
+<h2 id="stopping-the-encoder">5. Stopping the Encoder</h2>
+<p>When you’re done using the encoder, or if you want to turn it off temporarily, you can stop it by calling the <code>end()</code> method:</p>
+<pre class=" language-cpp"><code class="prism  language-cpp">encoder<span class="token punctuation">.</span><span class="token function">end</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Stops the encoder and disables interrupts</span>
+</code></pre>
+<p>The <code>end()</code> method is also automatically called in the destructor, so if the object goes out of scope, it will stop safely.</p>
+<h2 id="interrupts-and-advanced-usage">6. Interrupts and Advanced Usage</h2>
+<p>The <strong>RotEncoder</strong> library uses interrupts to ensure high accuracy and responsiveness, even at high speeds. When setting up the encoder, ensure that the pins used for <strong>Pin A</strong> and <strong>Pin B</strong> support hardware interrupts on your microcontroller.</p>
+<h3 id="important-notes-for-avr-microcontrollers">Important Notes for AVR Microcontrollers:</h3>
+<ul>
+<li>On <strong>AVR microcontrollers</strong> (such as the one used in Arduino boards like the Nano and Uno), <strong>port change interrupts</strong> can have issues if <strong>Pin A</strong> and <strong>Pin B</strong> are on the same port and share the same interrupt.</li>
+<li>When both pins are on the same port, using the same port change interrupt can result in <strong>missed interrupts</strong>, which may cause the encoder to lose track of its position.</li>
+<li>To avoid this issue, it’s recommended to use <strong>pins on different ports</strong> if you are relying on port change interrupts, as each port will have its own interrupt handler.</li>
+<li>If port change interrupts are not necessary, using dedicated <strong>external interrupts</strong> for Pin A and Pin B (on pins such as 2 and 3 on the Arduino Nano) will avoid this problem entirely.</li>
+</ul>
+<p>You can further customize the behavior of the library by overriding functions for reading the pins or controlling the pin modes if your setup requires different handling.</p>
+<hr>
+<h1 id="reading-and-decoding-of-rotary-encoders">Reading and Decoding of Rotary Encoders</h1>
+<p>Rotary encoders are widely used for input in various devices, including measurement equipment, microwaves, and even development kits like Xilinx starter kits. However, many descriptions and code examples found online often oversimplify how rotary encoders function, leading to incorrect or unreliable results. This guide aims to clarify how rotary encoders work and how to implement a robust reading algorithm.</p>
+<h2 id="understanding-the-basics">Understanding the Basics</h2>
+<p>A rotary encoder is a mechanical device with two output signals (A and B) that are activated in sequence as the knob rotates. The relative timing between these two signals (also known as quadrature output) allows us to determine the direction of rotation. Additionally, many rotary encoders include a spring that pulls the knob into a detented position where both contacts are open.</p>
+<h3 id="simplified-schematic">Simplified Schematic:</h3>
+<pre><code>       +5V ─┬───┐
+           ┌┴┐ ┌┴┐
+ ROT-ENC   │ │ │ │ 2x10K       Gray / Quadrature output    Up→
+┌───────┐  └┬┘ └┬┘              |           |           |
+│      A├───┴───│───&gt; _OutA    ─|──┐   ┌────|──┐   ┌────|──┐   ┌────
+│   O   │       │               |  └───┘    |  └───┘    |  └───┘
+│  com B├───────┴───&gt; _OutB    ─|────┐   ┌──|────┐   ┌──|────┐   ┌──
+└───┬───┘                       |    └───┘  |    └───┘  |    └───┘
+    │                           |           |           |  ←Dn
+   Gnd
+</code></pre>
+<p>The encoder generates a specific sequence depending on the direction of rotation. For example:</p>
+
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>_OutA</th>
+<th>_OutB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody>
+</table><p>By interpreting these transitions correctly, we can determine whether the knob is being rotated clockwise or counterclockwise. Here is a visual representation of how the A and B signals interact during rotation:</p>
+<h3 id="signal-timing-diagram">Signal Timing Diagram:</h3>
+<pre><code>                   Gray / Quadrature output    Up→
+        |           |           |           |           |           |
+_OutA: ─|──┐   ┌────|──┐   ┌────|──┐   ┌────|──┐   ┌────|──┐   ┌────|─
+        |  └───┘    |  └───┘    |  └───┘    |  └───┘    |  └───┘    | 
+_OutB: ─|────┐   ┌──|────┐   ┌──|────┐   ┌──|────┐   ┌──|────┐   ┌──|─
+        |    └───┘  |    └───┘  |    └───┘  |    └───┘  |    └───┘  | 
+        |           |           |           |  ←Dn      |           |
+</code></pre>
+<p>When the knob is not in motion, the spring typically pulls the knob to a position where both contacts are open (_OutA = 1, _OutB = 1).</p>
+<h2 id="spring-actuation-force-and-rotary-encoder-behavior">Spring Actuation Force and Rotary Encoder Behavior</h2>
+<p>A rotary encoder typically contains two contacts (A and B), which are alternately activated depending on the direction of rotation. These contacts generate a quadrature signal that allows the determination of both the direction and count of rotation.</p>
+<p>Inside the rotary encoder, a spring mechanism creates a tactile “click” sensation as the knob is rotated. This spring helps the knob settle into defined, stable positions, known as detents, which correspond to specific electrical states of the encoder. As you turn the knob, the spring provides resistance, increasing and decreasing in strength depending on the position of the contacts. This mechanism ensures that the knob does not accidentally drift between positions and gives the user clear feedback with each incremental movement.</p>
+<p>The spring is designed to pull the knob to a neutral position, where both contacts are open (_OutA = 1, _OutB = 1). However, as the knob is turned, resistance is felt, which varies depending on how the contacts are engaged.</p>
+<h3 id="spring-actuation-force-diagram">Spring Actuation Force Diagram:</h3>
+<pre><code>        |                                     |                                     |                                     |                                     |
+_OutA: ─|───────┐              ┌──────────────|───────┐              ┌──────────────|───────┐              ┌──────────────|───────┐              ┌──────────────|─
+        |       └──────────────┘              |       └──────────────┘              |       └──────────────┘              |       └──────────────┘              |
+_OutB: ─|──────────────┐              ┌───────|──────────────┐              ┌───────|──────────────┐              ┌───────|──────────────┐              ┌───────|─
+        |              └──────────────┘       |              └──────────────┘       |              └──────────────┘       |              └──────────────┘       |
+        |                                     |                                     |                                     |                                     |
+Force:  | Loose | Weak | Tight | Weak | Loose | Loose | Weak | Tight | Weak | Loose | Loose | Weak | Tight | Weak | Loose | Loose | Weak | Tight | Weak | Loose |
+</code></pre>
+<h3 id="explaining-the-spring-force">Explaining the Spring Force</h3>
+<ul>
+<li>
+<p><strong>Loose (Low Resistance)</strong>: When the knob is in a position where both contacts are open, the spring exerts minimal force, and there is little resistance. This is the default rest position of the rotary encoder.</p>
+</li>
+<li>
+<p><strong>Weak (Moderate Resistance)</strong>: As the knob starts to turn, one contact closes (either A or B). The spring force increases slightly, providing a moderate level of resistance.</p>
+</li>
+<li>
+<p><strong>Tight (High Resistance)</strong>: When both contacts are closed simultaneously, the spring force is at its maximum. This is where the user feels the most resistance during rotation. This ‘tight’ position helps prevent accidental movement and ensures that the encoder snaps back to the next position.</p>
+</li>
+</ul>
+<hr>
+<h2 id="considerations-for-low-power-designs">Considerations for Low-Power Designs</h2>
+<p>Rotary encoders designed for low-power electronics need to account for the mechanical behavior of the spring. In some cases, especially with encoders that have weaker springs (low actuation force), the knob might get stuck in a position where only one contact is closed, leading to a small but continuous current draw. Over time, this can significantly drain a battery in portable or battery-powered devices.</p>
+<p>To prevent this, designers can implement strategies such as dynamically controlling pull-up resistors, ensuring that static current draw is minimized when the rotary encoder is not in motion.</p>
+<p>For low-power designs, the key is to minimize static current consumption. Here’s an example of a circuit that avoids battery drain when the rotary encoder is idle:</p>
+<pre><code>Schematic:
+                ┌───────┐
+               ┌┴┐      │
+ ROT-ENC       │ │100K  │
+┌───────┐      └┬┘      │
+│      A├─────┬─│───┤&gt;O─┴─────&gt; OutA
+│   O   │     │ │
+│  com B├─────│─┴───┤&gt;O─┬─────&gt; OutB
+└───┬───┘    ┌┴┐        │
+    │        │ │100K    │
+   Gnd       └┬┘        │
+              └─────────┘
+</code></pre>
+<p>In this design, when both contacts are open, there is no static current, as the resistors are in series with the high-impedance CMOS inputs, resulting in no current flow. Even if one contact remains closed, the corresponding CMOS inverter input is pulled low, and its output goes high. Since the other contact remains open, there is no current flow through the associated resistor.</p>
+<p>When one contact is closed, the CMOS inverter on the opposite side drives the other input low, ensuring that there is no voltage difference across the resistors. This means no current flows through the resistors, even when one contact is closed. Only when both contacts are closed simultaneously will current flow, and this current is inversely proportional to the resistance values, meaning higher resistance results in lower current.</p>
+<p>In summary, this design ensures that no static current is drawn unless both contacts are closed, and even then, the current is minimal due to the high resistance values. The circuit takes advantage of the high input impedance of CMOS inverters and their rail-to-rail outputs, ensuring that the static current remains negligible during normal operation.</p>
+<hr>
+<h2 id="important-observations-for-rotary-encoder-algorithms">Important Observations for Rotary Encoder Algorithms</h2>
+<p>When designing algorithms for reading rotary encoders, it’s essential to account for contact bounce and avoid errors in state transitions. While some designs attempt to use software delays for debouncing, this is not effective for rotary encoders. Instead, ensure that state changes only occur when both contacts (A and B) have valid transitions, and no change should be registered if only one contact bounces.</p>
+<p>Additionally, the common contact for the A and B switches in a rotary encoder can cause simultaneous bounce on both A and B signals, leading to problems. This can be mitigated by reading the signals multiple times in quick succession to verify whether a simultaneous change is valid or just noise. If both contacts appear to change state almost at the same time, this is often due to bounce on the common terminal and should be ignored by the state machine.</p>
+<p>Some designs fail to account for the scenario where bounce on the common terminal causes a transition from state 00 (both contacts closed) to state 11 (both contacts open) and back to 00. During this transition, intermediate states such as 01 or 10 can appear due to slight delays in the microcontroller’s I/O circuitry, not because of bounce. If a transition from 00 to 11 (and back to 00) briefly passes through 01 or 10, it should not lead to counting, as this is the result of signal propagation delays rather than a valid transition. Bounce on contact A, contact B, or the common terminal should never result in an increment or decrement of the counter, as it is not a valid transition but a result of bounce noise.</p>
+<hr>
+<h2 id="common-mistakes-when-using-rotary-encoders">Common Mistakes When Using Rotary Encoders</h2>
+<p>Many issues with rotary encoders arise from misunderstanding how they work. Here are some of the most common pitfalls:</p>
+<ol>
+<li>
+<p><strong>Adding Capacitors for Debouncing:</strong> Some implementations suggest adding capacitors to the output to reduce bouncing. While this may reduce electrical noise, it often leads to inaccurate results, especially in sensitive applications. The real problem typically lies in the algorithm, not in the hardware. Capacitors introduce delays, which can cause the encoder to miss or misread transitions during fast rotations.</p>
+</li>
+<li>
+<p><strong>Using Faulty Algorithms:</strong> Many software implementations count incorrectly when the knob is moved back and forth slightly. For example, on a microwave or measurement device, you may see the counter increment or decrement even if you return to the original position. This happens because the state machine misinterprets partial movements as full steps. For example, if transitions like 1, 2, 3, 2, 1 instead of completing a full sequence (1, 2, 3, 4), the algorithm may still increment or decrement the counter. A well-designed algorithm should only count full transitions, preventing incorrect counting during small back-and-forth movements.</p>
+</li>
+<li>
+<p><strong>Slack in Counting:</strong> Some algorithms allow a small error range (+1 or -1), which may not be noticeable in some applications but can lead to incorrect readings in precision devices. A proper implementation should eliminate this slack by accurately tracking each quadrature phase.</p>
+</li>
+<li>
+<p><strong>Bounce on All Contacts:</strong> Rotary encoders typically have three terminals: A, B, and common. Not only do A and B bounce, but the common terminal can also cause simultaneous bouncing on both outputs. The reading algorithm should account for this and only count valid transitions.</p>
+</li>
+<li>
+<p><strong>Spring Issues and Battery Drain:</strong>  In battery-powered devices, the spring in the rotary encoder may fail to return the knob to the position where both contacts are open. If one contact remains closed, it can result in continuous current draw, draining the battery. To avoid this, it is crucial to dynamically enable or disable pull-up or pull-down resistors based on the state of the rotary encoder, allowing efficient low-power operation.</p>
+</li>
+<li>
+<p><strong>Potential Missed Interrupts:</strong> Missed interrupts could lead to errors in detecting the quadrature signals, especially on AVR microcontrollers. For more details, refer to the section <a href="#important-notes-for-avr-microcontrollers">Important Notes for AVR Microcontrollers</a>.</p>
+</li>
+</ol>
+<hr>
+<h2 id="best-practices-for-rotary-encoder-algorithms">Best Practices for Rotary Encoder Algorithms</h2>
+<p>To create a robust algorithm for reading rotary encoders, consider the following:</p>
+<ol>
+<li>
+<p><strong>Track Full Transitions:</strong> Ensure your code counts only full transitions (from one phase to the next). This means going through all four possible quadrature states before counting a valid movement.</p>
+</li>
+<li>
+<p><strong>Debouncing in Software:</strong> Avoid using hardware debouncing techniques (like capacitors). Instead, implement a software-based solution that ignores fast, transient changes in the signal.</p>
+</li>
+<li>
+<p><strong>Handling Bounce on Common Terminal pin:</strong> Design your algorithm to handle potential bounces on both A and B signals, as well as the common terminal. One way to achieve this is by sampling the signals multiple times to detect bounce on common terminal, and to handle transitions right.</p>
+</li>
+<li>
+<p><strong>Low Power Handling:</strong> If your design involves battery-operated devices, dynamically control pull-up resistors to prevent static current consumption when the encoder is idle.</p>
+</li>
+<li>
+<p><strong>Quality Components:</strong> Lastly, use rotary encoders with a high cycle life (e.g., 100,000 cycles or more). Lower-quality encoders can wear out quickly and lead to unreliable readings, especially in high-precision or frequently used devices.</p>
+</li>
+</ol>
+<hr>
+<h2 id="conclusion">Conclusion</h2>
+<p>Understanding the mechanics and electrical behavior of rotary encoders is crucial for creating reliable and efficient designs. Whether using Arduino Nano or FPGA, robust algorithms and proper hardware design can eliminate the common pitfalls associated with rotary encoders. This guide, along with the accompanying examples, provides a framework for correctly implementing rotary encoder reading, even in low-power applications.</p>
+<h2 id="additional-documentation">Additional Documentation</h2>
+<ul>
+<li><a href="./OverridesAndInitLists.md">Avoiding initialization lists for pin configuration, which minimizes runtime memory usage and allows for compile-time optimization.</a></li>
+<li><a href="./StaticPointerInterrupt.md">Handling interrupts safely and efficiently using a static pointer method.</a></li>
+</ul>
+<h2 id="contact">Contact</h2>
+<p>If you have any questions, feedback, or need further assistance, feel free to <a href="https://www.arduino.one/contact.html">Contact Me</a> through my online form.</p>
+
+    </div>
+  </div>
+</body>
+
+</html>

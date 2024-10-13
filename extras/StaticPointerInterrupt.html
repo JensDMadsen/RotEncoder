@@ -1,0 +1,283 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StaticPointerInterrupt.md</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__left">
+    <div class="stackedit__toc">
+      
+<ul>
+<li><a href="#documentation-handling-interrupts-in-c-using-a-static-pointer-method">Documentation: Handling Interrupts in C++ Using a Static Pointer Method</a>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#the-static-pointer-method">The Static Pointer Method</a></li>
+<li><a href="#advantages-of-the-method">Advantages of the Method</a></li>
+<li><a href="#when-to-use-atomic-blocks">When to Use Atomic Blocks</a></li>
+<li><a href="#example-code">Example Code</a></li>
+<li><a href="#template-based-interrupt-handler">Template-Based Interrupt Handler</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+<li><a href="#contact">Contact</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+  </div>
+  <div class="stackedit__right">
+    <div class="stackedit__html">
+      <!-- Markdeep: -->
+<h1 id="documentation-handling-interrupts-in-c-using-a-static-pointer-method">Documentation: Handling Interrupts in C++ Using a Static Pointer Method</h1>
+<h2 id="introduction">Introduction</h2>
+<p>Interrupts are essential for efficient event-driven programming in embedded systems. In C++, using a static function combined with a pointer to a class instance offers a powerful, reusable, and safe way to handle interrupts. This document outlines two methods for managing interrupts: the traditional method used in libraries like <strong>RotEncoder</strong>, and a more advanced template-based version that can handle multiple interrupts simultaneously.</p>
+<p>The template version offers the additional benefit of managing multiple interrupts through a flexible and reusable system, making it ideal for more complex applications where multiple interrupt sources must be handled by the same instance.</p>
+<h2 id="the-static-pointer-method">The Static Pointer Method</h2>
+<p>The method consists of the following key components:</p>
+<ul>
+<li><strong>Static ISR</strong>: A static function that acts as the interrupt service routine (ISR), which can be attached to hardware interrupts.</li>
+<li><strong>Pointer to Class Instance</strong>: A static pointer that points to the current instance of the class handling the interrupt.</li>
+<li><strong>Instance-specific Interrupt Function</strong>: A non-static function within the class that processes interrupts for that specific instance.</li>
+<li><strong>Atomic Block</strong>: On 8/16-bit systems, an atomic block is necessary when assigning the class pointer in an interrupt context to avoid race conditions. On 32-bit systems, assignments are typically atomic, so this precaution is not required.</li>
+</ul>
+<h2 id="advantages-of-the-method">Advantages of the Method</h2>
+<ul>
+<li><strong>Flexibility</strong>: The ISR is static and can be reused across multiple instances and projects.</li>
+<li><strong>Safety</strong>: No interrupt is processed unless the pointer is valid, reducing the risk of undefined behavior.</li>
+<li><strong>Reusability</strong>: The approach is reusable across different embedded projects, making it both scalable and modular.</li>
+</ul>
+<h2 id="when-to-use-atomic-blocks">When to Use Atomic Blocks</h2>
+<p>When working with <strong>8/16-bit microcontrollers</strong> (such as AVR-based Arduinos), assigning or modifying a multi-byte variable (such as a pointer) can be interrupted mid-assignment, leading to corrupt or inconsistent data. Therefore, we use <strong>atomic blocks</strong> to ensure that pointer assignments happen without interruption.</p>
+<p>However, in <strong>32-bit systems</strong> (such as ARM-based microcontrollers), assignments of pointer values are typically atomic by nature, and thus the use of atomic blocks is not necessary for such operations.</p>
+<h2 id="example-code">Example Code</h2>
+<p>Here’s how the interrupt handling method is implemented:</p>
+<pre class=" language-cpp"><code class="prism  language-cpp"><span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">&lt;Arduino.h&gt;</span></span>
+<span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">&lt;util/atomic.h&gt;</span>  </span><span class="token comment">// Required for 8/16-bit systems to ensure atomic operations</span>
+
+<span class="token keyword">class</span> <span class="token class-name">ISRHandler</span> <span class="token punctuation">{</span>
+<span class="token keyword">protected</span><span class="token operator">:</span>
+  <span class="token comment">// Function that will handle the specific interrupt for the instance</span>
+  <span class="token keyword">virtual</span> <span class="token keyword">void</span> <span class="token function">intr</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>  <span class="token comment">// Pure virtual function, must be implemented by derived class</span>
+<span class="token keyword">public</span><span class="token operator">:</span>
+  <span class="token operator">~</span><span class="token function">ISRHandler</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Destructor</span>
+    <span class="token function">end</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Ensure that interrupts are properly detached when the object is destroyed</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">bool</span> <span class="token function">begin</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Starts interrupt handling, returns true if successful</span>
+    <span class="token comment">// Method to begin interrupt handling by setting up the static pointer and attaching the ISR</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>intHandle<span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Only start if the handler is not already set</span>
+      <span class="token function">ATOMIC_BLOCK</span><span class="token punctuation">(</span>ATOMIC_RESTORESTATE<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token comment">// Use atomic block for 8/16-bit systems. It ensures that interrupts are fully disabled during</span>
+        <span class="token comment">// pointer assignment, providing safety in case previous detachInterrupt() wasn't called or failed.</span>
+        intHandle <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">;</span>  <span class="token comment">// Set the static pointer to the current instance</span>
+      <span class="token punctuation">}</span>
+      <span class="token function">attachInterrupt</span><span class="token punctuation">(</span><span class="token function">digitalPinToInterrupt</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">,</span> isr<span class="token punctuation">,</span> CHANGE<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Attach the static ISR to pin 2 (for example)</span>
+      <span class="token keyword">return</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>  <span class="token comment">// Return false if intHandle is already set</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">bool</span> <span class="token function">end</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Stops interrupt handling, returns true if successful</span>
+    <span class="token comment">// Method to stop interrupt handling by detaching the ISR and resetting the static pointer</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>intHandle <span class="token operator">==</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Only stop if intHandle points to this instance</span>
+      <span class="token function">ATOMIC_BLOCK</span><span class="token punctuation">(</span>ATOMIC_RESTORESTATE<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token comment">// Use atomic block for 8/16-bit systems. If detachInterrupt() fails, this atomic block ensures</span>
+        <span class="token comment">// intHandle is safely set to nullptr, preventing any invalid interrupt calls. Since detachInterrupt()</span>
+        <span class="token comment">// doesn't return success/failure code, handling this carefully is important.</span>
+        intHandle <span class="token operator">=</span> <span class="token keyword">nullptr</span><span class="token punctuation">;</span>  <span class="token comment">// Reset the static pointer</span>
+      <span class="token punctuation">}</span>
+      <span class="token function">detachInterrupt</span><span class="token punctuation">(</span><span class="token function">digitalPinToInterrupt</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Detach the ISR</span>
+      <span class="token keyword">return</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>  <span class="token comment">// Return false if intHandle doesn't match this instance</span>
+  <span class="token punctuation">}</span>
+
+<span class="token keyword">private</span><span class="token operator">:</span>
+  <span class="token keyword">typedef</span> ISRHandler<span class="token operator">*</span> <span class="token keyword">volatile</span> IntHandleT<span class="token punctuation">;</span>  <span class="token comment">// Define a static pointer type for interrupt handling</span>
+  <span class="token keyword">static</span> IntHandleT intHandle<span class="token punctuation">;</span>  <span class="token comment">// Static pointer to the current instance for interrupt handling</span>
+
+  <span class="token comment">// Static interrupt service routine (ISR) executes intr() function in this class</span>
+  <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">isr</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Static interrupt service routine (ISR)</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>intHandle<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      intHandle<span class="token operator">-</span><span class="token operator">&gt;</span><span class="token function">intr</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Call the instance-specific interrupt handler</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+<span class="token comment">// Initialize the static pointer to nullptr.</span>
+<span class="token comment">// This ensures that no interrupts are processed until 'begin()' is called and</span>
+<span class="token comment">// the pointer is set to the current instance of the ISRHandler class.</span>
+<span class="token comment">// Setting it to nullptr provides safety in case the ISR is triggered before</span>
+<span class="token comment">// the interrupt handler is properly initialized.</span>
+ISRHandler<span class="token operator">::</span>IntHandleT ISRHandler<span class="token operator">::</span>intHandle <span class="token operator">=</span> <span class="token keyword">nullptr</span><span class="token punctuation">;</span>
+</code></pre>
+<h3 id="code-explanation">Code Explanation</h3>
+<ul>
+<li>
+<p><strong><code>static IntHandleT intHandle</code></strong>: This is a static pointer to the current class instance that handles the interrupt. It allows the static ISR to call the instance-specific interrupt handler.</p>
+</li>
+<li>
+<p><strong><code>virtual void intr()</code></strong>: This is a pure virtual function that must be implemented in any class that inherits from <strong>ISRHandler</strong>. This function contains the logic specific to the interrupt event (e.g., updating a position counter).</p>
+</li>
+<li>
+<p><strong><code>begin()</code> and <code>end()</code></strong>: These methods attach and detach the ISR from a specific interrupt pin. In <strong>8/16-bit systems</strong>, the atomic block is used to ensure the assignment of the interrupt handler is not interrupted.</p>
+</li>
+<li>
+<p><strong><code>static void isr()</code></strong>: This is the static interrupt service routine that is triggered by the interrupt. It checks if the static pointer is valid before calling the instance-specific interrupt handler.</p>
+</li>
+</ul>
+<h2 id="template-based-interrupt-handler">Template-Based Interrupt Handler</h2>
+<p>The template-based version of the <code>ISRHandler</code> class allows you to handle multiple interrupts through the use of <em>parameter packs</em>. Parameter packs in C++ are a feature of templates that allow functions or classes to accept an arbitrary number of template parameters. In this case, the class can accept and manage multiple interrupt numbers and modes at once.</p>
+<p>Here’s how the template-based version works:</p>
+<ul>
+<li>You provide a list of interrupt numbers and mode (e.g., <code>RISING</code>, <code>FALLING</code>, etc.)</li>
+<li>The class uses recursive template functions to attach or detach interrupts for each number in the list, ensuring that all specified interrupts are managed by the same instance of the class.</li>
+</ul>
+<p>The key advantage of this approach is flexibility. You can attach and manage multiple interrupts in one instance without duplicating code, which is especially useful in complex systems with multiple interrupt sources.</p>
+<h3 id="template-code">Template Code</h3>
+<pre class=" language-cpp"><code class="prism  language-cpp"><span class="token comment">// ISRHandler.h</span>
+
+<span class="token macro property">#<span class="token directive keyword">ifndef</span> ISRHANDLER_H</span>
+<span class="token macro property">#<span class="token directive keyword">define</span> ISRHANDLER_H</span>
+
+<span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">&lt;Arduino.h&gt;</span></span>
+<span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">&lt;util/atomic.h&gt;</span>  </span><span class="token comment">// Required for 8/16-bit systems to ensure atomic operations</span>
+
+<span class="token comment">// USE:</span>
+<span class="token comment">//   // intr(uint8_t interruptNum) triggered on INT=2 RISING and INT=3 FALLING //</span>
+<span class="token comment">//   class MyInterruptHandler : public ISRHandler&lt;2,RISING, 3,FALLING&gt; {</span>
+<span class="token comment">//   protected:</span>
+<span class="token comment">//     void intr(uint8_t interruptNum) override {  // Handle interrupts here, both INT2 and INT3 calls same intr()</span>
+<span class="token comment">//       // code for interrupts here //</span>
+<span class="token comment">//     }</span>
+<span class="token comment">//   };</span>
+<span class="token comment">//</span>
+<span class="token comment">//   MyInterruptHandler handler;  // Interrupt handler</span>
+<span class="token comment">//</span>
+<span class="token comment">//   void setup() {</span>
+<span class="token comment">//     handler.begin();  // Start handling interrupts on pins 2 rising and 3 falling</span>
+<span class="token comment">//   }</span>
+
+<span class="token keyword">template</span> <span class="token operator">&lt;</span>uint8_t<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span> InterruptAndModePairs<span class="token operator">&gt;</span>  <span class="token comment">// Use template with interrupt and mode pairs for each interrupt</span>
+<span class="token keyword">class</span> <span class="token class-name">ISRHandler</span> <span class="token punctuation">{</span>
+<span class="token keyword">protected</span><span class="token operator">:</span>  <span class="token comment">// Function that will handle the specific interrupt for the instance</span>
+  <span class="token keyword">virtual</span> <span class="token keyword">void</span> <span class="token function">intr</span><span class="token punctuation">(</span>uint8_t interruptNum<span class="token punctuation">)</span> <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>  <span class="token comment">// Pure virtual function, must be implemented by derived class</span>
+
+<span class="token keyword">public</span><span class="token operator">:</span>
+  <span class="token operator">~</span><span class="token function">ISRHandler</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Destructor ensures that interrupts are properly stopped and detached</span>
+    <span class="token function">end</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// uses end() to stop and detach all interrupts</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">// Begin interrupt handling by setting up the static handle pointer and attaching the ISR</span>
+  <span class="token keyword">bool</span> <span class="token function">begin</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Starts interrupt handling for all interrupts in the template parameter pack</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>intHandle<span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Only start if the handler is not already set</span>
+      <span class="token function">ATOMIC_BLOCK</span><span class="token punctuation">(</span>ATOMIC_RESTORESTATE<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token comment">// Use atomic block for 8/16-bit systems. It ensures that interrupts are fully disabled during</span>
+        <span class="token comment">// pointer assignment, providing safety in case previous detachInterrupt() wasn't called or failed.</span>
+        intHandle <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">;</span>  <span class="token comment">// Set the static pointer to the current instance</span>
+      <span class="token punctuation">}</span>
+      <span class="token comment">// Attach ISR for each interrupt and mode pair in the parameter pack</span>
+      attachInterrupts<span class="token operator">&lt;</span>InterruptAndModePairs<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token operator">&gt;</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Recursively attach interrupts to static ISR</span>
+      <span class="token keyword">return</span> <span class="token boolean">true</span><span class="token punctuation">;</span>  <span class="token comment">// Return true if success</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>  <span class="token comment">// Return false if intHandle is already set</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">// Ending interrupt handling by detach all interrupts and resetting the handler to nullptr</span>
+  <span class="token keyword">bool</span> <span class="token function">end</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Stops interrupt handling for all interrupts in the template parameter pack</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>intHandle <span class="token operator">==</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Only stop if intHandle points to this instance</span>
+      <span class="token function">ATOMIC_BLOCK</span><span class="token punctuation">(</span>ATOMIC_RESTORESTATE<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token comment">// Use atomic block for 8/16-bit systems. If detachInterrupt() fails, this atomic block ensures</span>
+        <span class="token comment">// intHandle is safely set to nullptr, preventing any invalid interrupt calls. Since detachInterrupt()</span>
+        <span class="token comment">// doesn't return success/failure code, handling this carefully is important.</span>
+        intHandle <span class="token operator">=</span> <span class="token keyword">nullptr</span><span class="token punctuation">;</span>  <span class="token comment">// Reset the static pointer</span>
+      <span class="token punctuation">}</span>  <span class="token comment">// Detach ISR for each interrupt and mode pair in the parameter pack</span>
+      detachInterrupts<span class="token operator">&lt;</span>InterruptAndModePairs<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token operator">&gt;</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Recursively detach interrupts</span>
+      <span class="token keyword">return</span> <span class="token boolean">true</span><span class="token punctuation">;</span>  <span class="token comment">// Return true if success</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>  <span class="token comment">// Return false if intHandle doesn't match this instance</span>
+  <span class="token punctuation">}</span>
+
+<span class="token keyword">private</span><span class="token operator">:</span>
+  <span class="token keyword">typedef</span> ISRHandler<span class="token operator">*</span> <span class="token keyword">volatile</span> IntHandleT<span class="token punctuation">;</span>  <span class="token comment">// Define a static pointer type for interrupt handling</span>
+  <span class="token keyword">static</span> IntHandleT intHandle<span class="token punctuation">;</span>  <span class="token comment">// Static pointer to the current instance for interrupt handling</span>
+
+  <span class="token comment">// Helper function to attach interrupts recursively</span>
+  <span class="token keyword">template</span> <span class="token operator">&lt;</span>uint8_t InterruptNum<span class="token punctuation">,</span> <span class="token keyword">int</span> Mode<span class="token punctuation">,</span> uint8_t<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span> Rest<span class="token operator">&gt;</span>
+  <span class="token keyword">void</span> <span class="token function">attachInterrupts</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token function">attachInterrupt</span><span class="token punctuation">(</span>  <span class="token comment">// Attach ISR for the current interrupt and mode</span>
+      <span class="token function">digitalPinToInterrupt</span><span class="token punctuation">(</span>InterruptNum<span class="token punctuation">)</span><span class="token punctuation">,</span>  <span class="token comment">// Attach current InterruptNum</span>
+      <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Lambda function as static interrupt service routine (ISR)</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>intHandle<span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Make sure instance handle exists</span>
+          intHandle<span class="token operator">-</span><span class="token operator">&gt;</span><span class="token function">intr</span><span class="token punctuation">(</span>InterruptNum<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Call the instance interrupt trough handler if exists</span>
+        <span class="token punctuation">}</span>
+      <span class="token punctuation">}</span><span class="token punctuation">,</span>
+      Mode<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Attach Mode</span>
+    <span class="token keyword">if</span> <span class="token keyword">constexpr</span> <span class="token punctuation">(</span><span class="token keyword">sizeof</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">(</span>Rest<span class="token punctuation">)</span> <span class="token operator">&gt;</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Check if there are more interrupt and mode pairs in the parameter pack</span>
+      attachInterrupts<span class="token operator">&lt;</span>Rest<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token operator">&gt;</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Recursively attach the remaining interrupts and modes</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">// Helper function to detach interrupts recursively</span>
+  <span class="token keyword">template</span> <span class="token operator">&lt;</span>uint8_t InterruptNum<span class="token punctuation">,</span> <span class="token keyword">int</span> Mode<span class="token punctuation">,</span> uint8_t<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span> Rest<span class="token operator">&gt;</span>
+  <span class="token keyword">void</span> <span class="token function">detachInterrupts</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token function">detachInterrupt</span><span class="token punctuation">(</span><span class="token function">digitalPinToInterrupt</span><span class="token punctuation">(</span>InterruptNum<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Detach ISR for the current interrupt</span>
+    <span class="token keyword">if</span> <span class="token keyword">constexpr</span> <span class="token punctuation">(</span><span class="token keyword">sizeof</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">(</span>Rest<span class="token punctuation">)</span> <span class="token operator">&gt;</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>  <span class="token comment">// Check if there are more interrupt and mode pairs in the parameter pack</span>
+      detachInterrupts<span class="token operator">&lt;</span>Rest<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token operator">&gt;</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Recursively detach the remaining interrupts</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+<span class="token comment">// Initialize the static pointer to nullptr (must be in the header file)</span>
+<span class="token keyword">template</span><span class="token operator">&lt;</span>uint8_t<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span> InterruptAndModePairs<span class="token operator">&gt;</span>
+<span class="token keyword">typename</span> ISRHandler<span class="token operator">&lt;</span>InterruptAndModePairs<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token operator">&gt;</span><span class="token operator">::</span>IntHandleT ISRHandler<span class="token operator">&lt;</span>InterruptAndModePairs<span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token operator">&gt;</span><span class="token operator">::</span>intHandle <span class="token operator">=</span> <span class="token keyword">nullptr</span><span class="token punctuation">;</span>
+
+<span class="token macro property">#<span class="token directive keyword">endif</span>  </span><span class="token comment">// ISRHANDLER_H</span>
+</code></pre>
+<h3 id="example-using-isrhandler-with-multiple-interrupts">Example: Using ISRHandler with Multiple Interrupts</h3>
+<p>Here is an example of how to use the template-based version of <code>ISRHandler</code> to manage two interrupts (pins 2 and 3) simultaneously:</p>
+<pre class=" language-cpp"><code class="prism  language-cpp"><span class="token macro property">#<span class="token directive keyword">include</span> <span class="token string">"ISRHandler.h"</span>  </span><span class="token comment">// Include headers</span>
+
+<span class="token keyword">auto</span><span class="token operator">&amp;</span> Stdout <span class="token operator">=</span> Serial<span class="token punctuation">;</span>  <span class="token comment">// Uses Serial as Stdout</span>
+
+<span class="token comment">// intr() triggered on INT=2 RISING and INT=3 FALLING</span>
+<span class="token keyword">class</span> <span class="token class-name">MyInterruptHandler</span> <span class="token operator">:</span> <span class="token keyword">public</span> ISRHandler<span class="token operator">&lt;</span><span class="token number">2</span><span class="token punctuation">,</span>RISING<span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">,</span>FALLING<span class="token operator">&gt;</span> <span class="token punctuation">{</span>
+<span class="token keyword">protected</span><span class="token operator">:</span>
+  <span class="token comment">// Handle interrupts here, both INT2 and INT3 calls same intr()</span>
+  <span class="token keyword">void</span> <span class="token function">intr</span><span class="token punctuation">(</span><span class="token punctuation">)</span> override <span class="token punctuation">{</span>
+    Stdout<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token string">"Interrupt triggered!"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+MyInterruptHandler handler<span class="token punctuation">;</span>  <span class="token comment">// Interrupt handler</span>
+
+<span class="token keyword">void</span> <span class="token function">setup</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  Stdout<span class="token punctuation">.</span><span class="token function">begin</span><span class="token punctuation">(</span><span class="token number">115200</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Setup 115200 baud</span>
+  <span class="token keyword">while</span> <span class="token punctuation">(</span><span class="token operator">!</span>Serial<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Wait on Serial</span>
+  Stdout<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token string">"Interrupt handler test"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Check Serial print ok</span>
+
+  <span class="token comment">// Set the pins as input with pull-up resistors</span>
+  <span class="token function">pinMode</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span> INPUT_PULLUP<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Set pin 2 as input with pull-up</span>
+  <span class="token function">pinMode</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span> INPUT_PULLUP<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Set pin 3 as input with pull-up</span>
+
+  handler<span class="token punctuation">.</span><span class="token function">begin</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// Start handling interrupts on pins 2 and 3</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">void</span> <span class="token function">loop</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// Main code logic</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<h2 id="conclusion">Conclusion</h2>
+<p>The static pointer method, both in its traditional and template-based versions, provides a robust, flexible way to handle interrupts in C++. The template version further allows for the handling of multiple interrupts with minimal duplication of code, ensuring efficient and safe interrupt management across different hardware platforms.</p>
+<h2 id="contact">Contact</h2>
+<p>If you have any questions, feedback, or need further assistance, feel free to <a href="https://www.arduino.one/contact.html">Contact Me</a> through my online form.</p>
+
+    </div>
+  </div>
+</body>
+
+</html>
